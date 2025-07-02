@@ -1,33 +1,31 @@
-import logging, traceback, os, sys
+import logging
+import json
+import azure.functions as func
+from .scraper import scrape_justjoin  # Import from separate file
 
-# 1) Check critical imports
-try:
-    import requests
-    from bs4 import BeautifulSoup
-    import azure.functions as func
-    logging.info("✅ Dependencies imported successfully")
-except Exception as e:
-    logging.error("🚨 IMPORT ERROR: %s", e, exc_info=True)
-    raise
+def main(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info('🚀 HTTP trigger function processed a request.')
 
-# 2) Ensure scraper.py is on the path
-root = os.path.abspath(os.path.dirname(__file__))
-if root not in sys.path:
-    sys.path.insert(0, root)
-
-# 3) Import your scraper logic
-try:
-    from scraper import scrape_justjoin
-    logging.info("✅ scraper module imported")
-except Exception as e:
-    logging.error("🚨 SCRAPER IMPORT ERROR: %s", e, exc_info=True)
-    raise
-
-def main(timer: func.TimerRequest) -> None:
-    logging.info("▶️ justjoin-fresh-scraper: Scrape triggered")
     try:
         jobs = scrape_justjoin()
-        logging.info(f"✅ justjoin-fresh-scraper: Scraped {len(jobs)} jobs")
+        
+        return func.HttpResponse(
+            json.dumps({
+                "status": "success",
+                "jobs_count": len(jobs),
+                "sample_jobs": jobs[:3]  # Return first 3 jobs as sample
+            }),
+            status_code=200,
+            mimetype="application/json"
+        )
+        
     except Exception as e:
-        logging.error("❌ justjoin-fresh-scraper: Error during scrape", exc_info=True)
-        raise
+        logging.error(f"❌ Error: {str(e)}")
+        return func.HttpResponse(
+            json.dumps({
+                "status": "error",
+                "message": str(e)
+            }),
+            status_code=500,
+            mimetype="application/json"
+        )
