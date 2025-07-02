@@ -1,2 +1,2 @@
 # justjoin-fresh
-test
+tests
